@@ -16,5 +16,7 @@ Hints:
 	1. You may need to define other functions, such as crop and adjust function
 	2. You may need to define two ways for localizing plates(yellow or other colors)
 """
+
+
 def plate_detection(image):
-	return plate_imgs
+    return plate_imgs

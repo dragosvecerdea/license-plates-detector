@@ -1,3 +1,4 @@
+
 import cv2
 import os
 import pandas as pd
@@ -5,7 +6,7 @@ import Localization
 import Recognize
 
 """
-In this file, you will define your own CaptureFrame_Process funtion. In this function,
+In this file, you will define your own CaptureFrame_Process function. In this function,
 you need three arguments: file_path(str type, the video file), sample_frequency(second), save_path(final results saving path).
 To do:
 	1. Capture the frames for the whole video by your sample_frequency, record the frame number and timestamp(seconds).
