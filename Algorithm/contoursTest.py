@@ -6,8 +6,10 @@ import math
 
 morph_size=(3,3)
 # load the image
+originalImage = cv2.imread("Data/inputTest6.jpg")
 image = cv2.imread("Data/laplacianOutput.png")
-imageShow = image.copy()
+#imageShow = image.copy()
+#imageShow = cv2.cvtColor(imageShow, cv2.COLOR_BGR2GRAY)
 imgGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 imgGray = cv2.threshold(imgGray, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
 erosion = cv2.erode(imgGray, (3,3),iterations=2)
@@ -28,6 +30,6 @@ boxes = []
 for contour in contours:
     (x,y,w,h)= cv2.boundingRect(contour)
     if (2.5 <= (float(w) / float(h)) < 10):
-        cv2.rectangle(imageShow, (x,y), (x+w, y+h), (0, 255, 0), 2)
-plt.imshow(imageShow)
+        cv2.rectangle(originalImage, (x,y), (x+w, y+h), (255), 2)
+plt.imshow(originalImage)
 plt.show()

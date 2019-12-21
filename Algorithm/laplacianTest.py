@@ -8,7 +8,7 @@ import math
 # load the image
 image = cv2.imread("Data/colorOutput.png")
 
-filterSize = 5
+filterSize = 15
 Filter = cv2.GaussianBlur(image,(filterSize,filterSize),cv2.BORDER_DEFAULT)
 
 laplacian = cv2.Laplacian(Filter,cv2.CV_64F)
