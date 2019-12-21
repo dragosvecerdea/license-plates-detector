@@ -20,10 +20,9 @@ for (lower, upper) in boundaries:
 	# the mask
 	mask = cv2.inRange(image, lower, upper)
 	output = cv2.bitwise_and(image, image, mask=mask)
-	cv2.imwrite("Data/output.png", output)
+	cv2.imwrite("Data/colorOutput.png", output)
 	# show the images
 	cv2.imshow("images", np.hstack([image, output]))
 	cv2.waitKey(0)
 
 	#save output image
-

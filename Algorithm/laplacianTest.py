@@ -6,13 +6,14 @@ import math
 
 
 # load the image
-image = cv2.imread("Data/output.png")
+image = cv2.imread("Data/colorOutput.png")
 
-filterSize = 3
-Filter = cv2.GaussianBlur(image,(3, 3),cv2.BORDER_DEFAULT)
+filterSize = 5
+Filter = cv2.GaussianBlur(image,(filterSize,filterSize),cv2.BORDER_DEFAULT)
 
 laplacian = cv2.Laplacian(Filter,cv2.CV_64F)
 
+cv2.imwrite("Data/laplacianOutput.png", laplacian)
 plt.imshow(laplacian,cmap = 'gray')
 plt.title('Laplacian'), plt.xticks([]), plt.yticks([])
 plt.show()
