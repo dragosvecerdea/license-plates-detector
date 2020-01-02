@@ -6,7 +6,7 @@ import math
 
 morph_size=(3,3)
 # load the image
-originalImage = cv2.imread("Data/inputTest6.jpg")
+originalImage = cv2.imread("Data/inputTest5.jpeg")
 image = cv2.imread("Data/laplacianOutput.png")
 #imageShow = image.copy()
 #imageShow = cv2.cvtColor(imageShow, cv2.COLOR_BGR2GRAY)
@@ -27,9 +27,17 @@ imThreshold = cv2.threshold(dialate, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OT
 #Find bounding boxed
 contours, hierarchy = cv2.findContours(imThreshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 boxes = []
+
+idx = 0
 for contour in contours:
+    idx += 1
     (x,y,w,h)= cv2.boundingRect(contour)
     if (2.5 <= (float(w) / float(h)) < 10):
         cv2.rectangle(originalImage, (x,y), (x+w, y+h), (255), 2)
-plt.imshow(originalImage)
-plt.show()
+        if (idx <=1):
+            roi = originalImage[y:y + h, x:x + w]
+            cv2.imwrite("Data/contourTest.png", roi)
+
+cv2.imshow('img', originalImage)
+cv2.waitKey()
+
