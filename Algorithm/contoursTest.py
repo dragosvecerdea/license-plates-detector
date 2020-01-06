@@ -6,7 +6,7 @@ import math
 
 morph_size=(3,3)
 # load the image
-originalImage = cv2.imread("Data/inputTest5.jpeg")
+originalImage = cv2.imread("Data/inputTest6.jpg")
 image = cv2.imread("Data/laplacianOutput.png")
 #imageShow = image.copy()
 #imageShow = cv2.cvtColor(imageShow, cv2.COLOR_BGR2GRAY)

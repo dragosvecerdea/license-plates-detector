@@ -3,7 +3,7 @@ import argparse
 import cv2
 
 # load the image
-image = cv2.imread("Data/inputTest5.jpeg")
+image = cv2.imread("Data/inputTest6.jpg")
 
 
 # define the list of boundaries
