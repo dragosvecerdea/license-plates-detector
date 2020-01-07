@@ -6,7 +6,7 @@ import math
 
 morph_size=(3,3)
 # load the image
-originalImage = cv2.imread("Data/inputTest6.jpg")
+originalImage = cv2.imread("TestSet/frame0.jpg")
 image = cv2.imread("Data/laplacianOutput.png")
 #imageShow = image.copy()
 #imageShow = cv2.cvtColor(imageShow, cv2.COLOR_BGR2GRAY)
@@ -32,11 +32,10 @@ idx = 0
 for contour in contours:
     idx += 1
     (x,y,w,h)= cv2.boundingRect(contour)
-    if (2.5 <= (float(w) / float(h)) < 10):
+    if (2 <= (float(w) / float(h)) < 4):
         cv2.rectangle(originalImage, (x,y), (x+w, y+h), (255), 2)
-        if (idx <=1):
-            roi = originalImage[y:y + h, x:x + w]
-            cv2.imwrite("Data/contourTest.png", roi)
+        roi = originalImage[y:y + h, x:x + w]
+        cv2.imwrite("Data/contourExtra/contourTest"+str(idx)+".png", roi)
 
 cv2.imshow('img', originalImage)
 cv2.waitKey()
