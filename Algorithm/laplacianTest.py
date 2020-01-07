@@ -5,7 +5,7 @@ import numpy as np
 import math
 
 # load the image
-image = cv2.imread("Data/colorOutput.png")
+image = cv2.imread("../Data/contourExtra/contourTest3.jpg")
 ## DILATE IMAGE
 kernel = np.ones((3,3), np.uint8)
 image = cv2.dilate(image, kernel, iterations=5)

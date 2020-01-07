@@ -6,8 +6,8 @@ import math
 
 morph_size=(3,3)
 # load the image
-originalImage = cv2.imread("TestSet/frame0.jpg")
-image = cv2.imread("Data/laplacianOutput.png")
+originalImage = cv2.imread("../Data/contourExtra/contourTest3.jpg")
+image = cv2.imread("../Data/laplacianOutput.png")
 #imageShow = image.copy()
 #imageShow = cv2.cvtColor(imageShow, cv2.COLOR_BGR2GRAY)
 imgGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -25,7 +25,7 @@ dialate = cv2.dilate(erosion, kernel, iterations=5)
 imThreshold = cv2.threshold(dialate, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
 
 #Find bounding boxed
-contours, hierarchy = cv2.findContours(imThreshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+_ ,contours, hierarchy = cv2.findContours(imThreshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 boxes = []
 
 idx = 0

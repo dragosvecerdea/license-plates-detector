@@ -3,7 +3,7 @@ import cv2
 from sklearn.cluster import MiniBatchKMeans
 
 # load the image
-image = cv2.imread("TestSet/frame0.jpg")
+image = cv2.imread("../Data/contourExtra/contourTest3.jpg")
 
 
 # normalize float versions
