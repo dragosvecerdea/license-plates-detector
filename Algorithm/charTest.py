@@ -9,6 +9,7 @@ img = cv2.normalize(img, None, alpha=0, beta=1.5, norm_type=cv2.NORM_MINMAX, dty
 img = np.clip(img, 0, 1)
 img = (255*img).astype(np.uint8)
 
+
 def auto_canny(image, sigma=0.1):
     # compute the median of the single channel pixel intensities
     v = np.median(image)
@@ -18,7 +19,7 @@ def auto_canny(image, sigma=0.1):
     upper = int(min(255, (1.0 + sigma) * v))
     edged = cv2.Canny(image, lower, upper)
 
-    # return the edged image
+     # return the edged image
     return edged
 
 
@@ -34,7 +35,7 @@ sorted_ctrs = sorted(ctrs, key=lambda ctr: cv2.boundingRect(ctr)[0])
 img_area = img.shape[0] * img.shape[1]
 for i, ctr in enumerate(ctrs):
     if hierarchy[0][i][3] == -1:
-         continue
+        continue
     x, y, w, h = cv2.boundingRect(ctr)
     roi_area = w * h
     roi_ratio = roi_area / img_area
