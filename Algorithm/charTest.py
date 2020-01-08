@@ -1,8 +1,5 @@
 import cv2
 import numpy as np
-from sklearn.cluster import MiniBatchKMeans
-from scipy.ndimage.filters import median_filter
-
 
 img = cv2.imread("../Data/contourExtra/contourTest3.jpg")
 img = cv2.resize(img, (img.shape[1]*3,img.shape[0]*3), interpolation = cv2.INTER_CUBIC)

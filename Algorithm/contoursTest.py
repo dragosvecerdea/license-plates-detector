@@ -1,12 +1,9 @@
 import cv2
-import matplotlib as matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
-import math
 
 morph_size=(3,3)
 # load the image
-originalImage = cv2.imread("../Data/contourExtra/contourTest3.jpg")
+originalImage = cv2.imread("../TestSet/frame0.jpg")
 image = cv2.imread("../Data/laplacianOutput.png")
 #imageShow = image.copy()
 #imageShow = cv2.cvtColor(imageShow, cv2.COLOR_BGR2GRAY)
