@@ -130,9 +130,6 @@ def getChars(input):
     img_area = img.shape[0] * img.shape[1]
     chars = []
     for i, ctr in enumerate(sorted_ctrs):
-        #if hierarchy[0][i][3] == -1:
-         #   continue
-        #
         x, y, w, h = cv2.boundingRect(ctr)
         roi_area = w * h
         roi_ratio = roi_area / img_area
@@ -146,6 +143,7 @@ def getChars(input):
         cv2.imshow("edge", img)
         cv2.waitKey()
         for char in chars:
+            print(bestMatch(char))
             cv2.imshow("char", char)
             cv2.waitKey()
     return chars
@@ -173,7 +171,6 @@ def getFrames(inputVid):
 
         for idx, plate in enumerate(plates):
             getChars(plate)
-            cv2.imwrite("../TestSet/plates/" + str(plateIdx) + ".jpg", plate)
             plateIdx += 1
         print('Read a new frame: ', success)
         count += 1
@@ -189,8 +186,33 @@ def crop_img(img, scaleX=1.0, scaleY=1.0):
     return img_cropped
 
 
-#frames = getFrames("../TrainingSet/Categorie III/Video61_2.avi")
-frames = getFrames("../trainingsvideo.avi")
+def bestMatch(image):
+    min = 1000
+    image = cv2.resize(image, (100, 100))
+    minIdx = 1
+    for idx in range(1, 18, 1):
+        letterRoi = cv2.imread("../SameSizeLetters/" + str(idx) + ".jpg")
+        letterRoi = cv2.resize(letterRoi, (100, 100))
+        cv2.imshow("img", letterRoi)
+        cv2.waitKey()
+        letterRoi = cv2.adaptiveThreshold(letterRoi, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 39, 1)
+        res = cv2.absdiff(letterRoi, image)
+
+        # --- convert the result to integer type ---
+        res = res.astype(np.uint8)
+
+        # --- find percentage difference based on number of pixels that are not zero ---
+        percentage = (np.count_nonzero(res) * 100) / res.size
+
+        if percentage < min:
+            min = percentage
+            minIdx = idx
+
+    return minIdx
+
+
+frames = getFrames("../TrainingSet/Categorie II/Video225.avi")
+#frames = getFrames("../trainingsvideo.avi")
 
 totalFrames  = frames - 1
 print(totalFrames)
