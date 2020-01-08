@@ -3,7 +3,7 @@ import cv2
 from sklearn.cluster import MiniBatchKMeans
 
 
-def colorTest(input):
+def filterColor(input):
     # load the image
     image = input
     # normalize float versions
@@ -63,24 +63,27 @@ def auto_canny(image, sigma):
     return edged
 
 
-def laplacianTest(input):
+def applyCanny(input):
     # load the image
-    image = colorTest(input)
+    image = input.copy()
     ## DILATE IMAGE
     kernel = np.ones((3, 3), np.uint8)
     image = cv2.dilate(image, kernel, iterations=5)
-    laplacian = auto_canny(image, 0.33)
+    canny = auto_canny(image, 0.33)
+    return canny
 
 
-def contoursTest(input):
+def getPlates(input, colorFiltered):
     morph_size = (3, 3)
     # load the image
-    originalImage = input
-    image = laplacianTest(originalImage)
+    originalImage = input.copy()
+    image = applyCanny(colorFiltered)
 
-    imgGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    imgGray = cv2.threshold(imgGray, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    erosion = cv2.erode(imgGray, (3, 3), iterations=2)
+
+    image = image.astype('uint8')
+    #imgGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    #imgGray = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    erosion = cv2.erode(image, (3, 3), iterations=2)
 
     ## DILATE IMAGE
     kernel = np.ones((3, 3), np.uint8)
@@ -88,22 +91,28 @@ def contoursTest(input):
 
     imThreshold = cv2.threshold(dialate, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
 
+
+
     # Find bounding boxed
-    _, contours, hierarchy = cv2.findContours(imThreshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    (_, contours, hierarchy) = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     boxes = []
 
     idx = 0
+    rois = []
     for contour in contours:
         idx += 1
         (x, y, w, h) = cv2.boundingRect(contour)
         if (2 <= (float(w) / float(h)) < 4):
             cv2.rectangle(originalImage, (x, y), (x + w, y + h), (255), 2)
             roi = originalImage[y:y + h, x:x + w]
-            cv2.imwrite("../Data/contourExtra/contourTest" + str(idx) + ".png", roi)
+            rois.append(roi)
+    return rois
 
-def charTest(input):
-    img = cv2.imread("../Data/contourExtra/contourTest3.jpg")
-    img = cv2.resize(img, (img.shape[1] * 3, img.shape[0] * 3), interpolation=cv2.INTER_CUBIC)
+
+def getChars(input):
+    img = input
+    img = cv2.resize(img, (img.shape[1] * 5, img.shape[0] * 5), interpolation=cv2.INTER_CUBIC)
+    img = crop_img(img, 0.9, 0.7)
 
     img = cv2.normalize(img, None, alpha=0, beta=1.5, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
 
@@ -112,44 +121,90 @@ def charTest(input):
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     thresh_inv = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 39, 1)
-    edges = auto_canny(thresh_inv, 0.1)
+    edges = auto_canny(thresh_inv, 0.75)
     kernel = np.ones((3, 3), np.uint8)
-    edges = cv2.dilate(edges, kernel, iterations=1)
-    cv2.imshow("tr", edges)
-    cv2.imshow("img", edges)
-    (_, ctrs, hierarchy) = cv2.findContours(edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    #edges = cv2.erode(edges, kernel, iterations=2)
+    #edges = cv2.dilate(edges, kernel, iterations=2)
+    (_, ctrs, hierarchy) = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     sorted_ctrs = sorted(ctrs, key=lambda ctr: cv2.boundingRect(ctr)[0])
     img_area = img.shape[0] * img.shape[1]
-    for i, ctr in enumerate(ctrs):
-        if hierarchy[0][i][3] == -1:
-            continue
+    chars = []
+    for i, ctr in enumerate(sorted_ctrs):
+        #if hierarchy[0][i][3] == -1:
+         #   continue
+        #
         x, y, w, h = cv2.boundingRect(ctr)
         roi_area = w * h
         roi_ratio = roi_area / img_area
-        if ((roi_ratio >= 0.01) and (roi_ratio < 0.1)):
+        if ((roi_ratio >= 0.02) and (roi_ratio < 0.2)):
             if ((h > 1.2 * w) and (4 * w >= h)):
-                minim = 100
-                index = 0
                 cv2.rectangle(img, (x, y), (x + w, y + h), (90, 0, 255), 2)
                 char = cv2.cvtColor(img[y:y + h, x:x + w], cv2.COLOR_BGR2GRAY)
                 char = cv2.adaptiveThreshold(char, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 39, 1)
-                cv2.imshow('char', char)
-                print(index, minim)
+                chars.append(char)
+    if len(chars) == 6:
+        cv2.imshow("edge", img)
+        cv2.waitKey()
+        for char in chars:
+            cv2.imshow("char", char)
+            cv2.waitKey()
+    return chars
 
-    cv2.imwrite("../Data/contourExtra/chars.jpg", img)
 
-# Path to video file
-vidObj = cv2.VideoCapture("../TrainingSet/Categorie III/Video100_2.avi")
+def getNumberPlate(chars):
+    str = []
+    for idx, char in enumerate(chars):
+        str.append(matchChar(char))
+    return str
 
-# Used as counter variable
-count = 0
-# checks whether frames were extracted
-success = 1
+def matchChar(char):
+    return str(1)
 
-while success:
-    success, image = vidObj.read()
-    # Saves the frames with frame-count
-    cv2.imwrite("TestSet/frame" + str(count) + ".jpg", image)
-    bbox = contoursTest("../TestSet/frame" + str(count) + ".jpg")
-    count += 1
+def getFrames(inputVid):
+    # Path to video file
+    video = cv2.VideoCapture(inputVid)
+    success, image = video.read()
+    count = 0
+    plateIdx = 0
+    while success:
+        # save frame as JPEG file    
+        cv2.imwrite("../TestSet/frame%d.jpg" % count, image)
+        plates = getPlates(image,filterColor(image))
 
+        for idx, plate in enumerate(plates):
+            getChars(plate)
+            cv2.imwrite("../TestSet/plates/" + str(plateIdx) + ".jpg", plate)
+            plateIdx += 1
+        print('Read a new frame: ', success)
+        count += 1
+        success, image = video.read()
+    return count
+
+def crop_img(img, scaleX=1.0, scaleY=1.0):
+    center_x, center_y = img.shape[1] / 2, img.shape[0] / 2
+    width_scaled, height_scaled = img.shape[1] * scaleX, img.shape[0] * scaleY
+    left_x, right_x = center_x - width_scaled / 2, center_x + width_scaled / 2
+    top_y, bottom_y = center_y - height_scaled / 2, center_y + height_scaled / 2
+    img_cropped = img[int(top_y):int(bottom_y), int(left_x):int(right_x)]
+    return img_cropped
+
+
+#frames = getFrames("../TrainingSet/Categorie III/Video61_2.avi")
+frames = getFrames("../trainingsvideo.avi")
+
+totalFrames  = frames - 1
+print(totalFrames)
+
+image = cv2.imread("../TestSet/frame" + str(totalFrames) + ".jpg")
+cv2.imwrite("../TestSet/colorPerFrame/" + str(totalFrames) + ".jpg", filterColor(image))
+
+
+
+"""
+bbox = getPlates(filterColor(image))
+chars = []
+for idx, plate in enumerate(bbox):
+    chars = getChars(plate)
+    for char in chars:
+        cv2.imwrite("../TestSet/charsPerFrame/frame" + str(count) + "/char" + str(idx) + ".jpg", char)
+"""
