@@ -69,7 +69,7 @@ def applyCanny(input):
     ## DILATE IMAGE
     kernel = np.ones((3, 3), np.uint8)
     image = cv2.dilate(image, kernel, iterations=5)
-    canny = auto_canny(image, 0.33)
+    canny = auto_canny(image, 0.95)
     return canny
 
 
@@ -120,8 +120,8 @@ def getChars(input):
     img = (255 * img).astype(np.uint8)
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    thresh_inv = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 39, 1)
-    edges = auto_canny(thresh_inv, 0.75)
+    thresh_inv = cv2.threshold(gray, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    edges = auto_canny(thresh_inv, 0.95)
     kernel = np.ones((3, 3), np.uint8)
     #edges = cv2.erode(edges, kernel, iterations=2)
     #edges = cv2.dilate(edges, kernel, iterations=2)
@@ -137,14 +137,16 @@ def getChars(input):
             if ((h > 1.2 * w) and (4 * w >= h)):
                 cv2.rectangle(img, (x, y), (x + w, y + h), (90, 0, 255), 2)
                 char = cv2.cvtColor(img[y:y + h, x:x + w], cv2.COLOR_BGR2GRAY)
-                char = cv2.adaptiveThreshold(char, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 39, 1)
+                char = cv2.threshold(char, 250, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
                 chars.append(char)
     if len(chars) == 6:
         cv2.imshow("edge", img)
         cv2.waitKey()
         for char in chars:
             print(bestMatch(char))
+            char = cv2.medianBlur(char, 7)
             cv2.imshow("char", char)
+
             cv2.waitKey()
     return chars
 
@@ -187,31 +189,32 @@ def crop_img(img, scaleX=1.0, scaleY=1.0):
 
 
 def bestMatch(image):
-    min = 1000
-    image = cv2.resize(image, (100, 100))
-    minIdx = 1
+    max = 9999999999
+    maxIdx = 1
     for idx in range(1, 18, 1):
         letterRoi = cv2.imread("../SameSizeLetters/" + str(idx) + ".jpg")
-        letterRoi = cv2.resize(letterRoi, (100, 100))
-        cv2.imshow("img", letterRoi)
-        cv2.waitKey()
-        letterRoi = cv2.adaptiveThreshold(letterRoi, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 39, 1)
+        letterRoi = cv2.resize(letterRoi, (image.shape[1], image.shape[0]))
+        image = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        letterRoi = cv2.cvtColor(letterRoi, cv2.COLOR_BGR2GRAY)
+        #letterRoi = cv2.adaptiveThreshold(letterRoi, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 39, 1)
         res = cv2.absdiff(letterRoi, image)
+        rows, cols = letterRoi.shape
+        countWhile = 0
+        countOk = 0
+        for i in range(rows):
+            for j in range(cols):
+                if letterRoi[i,j] == image[i,j]:
+                    countOk+=1
+        (_, ctrs1, hierarchy) = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        (_, ctrs2, hierarchy) = cv2.findContours(letterRoi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        matching = cv2.matchShapes(image, letterRoi, cv2.CONTOURS_MATCH_I1, 0)
+        if matching < max:
+            max = matching
+            maxIdx = idx
+    return maxIdx
 
-        # --- convert the result to integer type ---
-        res = res.astype(np.uint8)
 
-        # --- find percentage difference based on number of pixels that are not zero ---
-        percentage = (np.count_nonzero(res) * 100) / res.size
-
-        if percentage < min:
-            min = percentage
-            minIdx = idx
-
-    return minIdx
-
-
-frames = getFrames("../TrainingSet/Categorie II/Video225.avi")
+frames = getFrames("../TrainingSet/Categorie III/Video61_2.avi")
 #frames = getFrames("../trainingsvideo.avi")
 
 totalFrames  = frames - 1
