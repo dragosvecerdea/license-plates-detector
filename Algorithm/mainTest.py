@@ -79,9 +79,8 @@ def getPlates(input, colorFiltered):
     originalImage = input.copy()
     image = applyCanny(colorFiltered)
 
-
     image = image.astype('uint8')
-    #imgGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # imgGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     imgGray = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     erosion = cv2.erode(image, (3, 3), iterations=2)
 
@@ -90,8 +89,6 @@ def getPlates(input, colorFiltered):
     dialate = cv2.dilate(erosion, kernel, iterations=5)
 
     imThreshold = cv2.threshold(dialate, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-
-
 
     # Find bounding boxed
     (_, contours, hierarchy) = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -125,8 +122,8 @@ def getChars(input):
     thresh_inv = cv2.threshold(gray, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     edges = auto_canny(thresh_inv, 0.95)
     kernel = np.ones((3, 3), np.uint8)
-    #edges = cv2.erode(edges, kernel, iterations=2)
-    #edges = cv2.dilate(edges, kernel, iterations=2)
+    # edges = cv2.erode(edges, kernel, iterations=2)
+    # edges = cv2.dilate(edges, kernel, iterations=2)
     (_, ctrs, hierarchy) = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     sorted_ctrs = sorted(ctrs, key=lambda ctr: cv2.boundingRect(ctr)[0])
     img_area = img.shape[0] * img.shape[1]
@@ -161,7 +158,7 @@ def getFrames(inputVid):
     while success:
         # save frame as JPEG file    
         cv2.imwrite("../TestSet/frame%d.jpg" % count, image)
-        plates = getPlates(image,filterColor(image))
+        plates = getPlates(image, filterColor(image))
 
         for idx, plate in enumerate(plates):
             getChars(plate)
@@ -170,6 +167,7 @@ def getFrames(inputVid):
         count += 1
         success, image = video.read()
     return count
+
 
 def crop_img(img, scaleX=1.0, scaleY=1.0):
     center_x, center_y = img.shape[1] / 2, img.shape[0] / 2
@@ -189,18 +187,54 @@ def bestMatch(image):
         letterRoi = cv2.resize(letterRoi, (image.shape[1], image.shape[0]))
         image = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         letterRoi = cv2.cvtColor(letterRoi, cv2.COLOR_BGR2GRAY)
-        #letterRoi = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        # letterRoi = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+
+
         rows, cols = letterRoi.shape
         # --- take the absolute difference of the images ---
-        res = cv2.absdiff(image, letterRoi)
+        #res = cv2.absdiff(image, letterRoi)
         # --- convert the result to integer type ---
-        res = res.astype(np.uint8)
+        #res = res.astype(np.uint8)
         # --- find percentage difference based on number of pixels that are not zero ---
-        percentage = (np.count_nonzero(res) * 100) / res.size
+        #percentage = (np.count_nonzero(res) * 100) / res.size
+        percentage = matchChecker(image, letterRoi)
         diff.append(percentage)
 
-    result = np.where(diff == np.amin(diff))
+    result = np.argmax(diff)
     return result
+
+
+def matchChecker(character, template):
+    original = character
+    image_to_compare = template
+
+    sift = cv2.xfeatures2d.SIFT_create()
+    kp_1, desc_1 = sift.detectAndCompute(original, None)
+    kp_2, desc_2 = sift.detectAndCompute(image_to_compare, None)
+
+    index_params = dict(algorithm=0, trees=5)
+    search_params = dict()
+    flann = cv2.FlannBasedMatcher(index_params, search_params)
+    matches = flann.knnMatch(desc_1, desc_2, k=2)
+
+    good_points = []
+    for m, n in matches:
+        if m.distance < 0.6 * n.distance:
+            good_points.append(m)
+
+    # Define how similar they are
+    number_keypoints = 0
+    if len(kp_1) <= len(kp_2):
+        number_keypoints = len(kp_1)
+    else:
+        number_keypoints = len(kp_2)
+
+    #print("Keypoints 1ST Image: " + str(len(kp_1)))
+    #print("Keypoints 2ND Image: " + str(len(kp_2)))
+    #print("GOOD Matches:", len(good_points))
+    #print("How good it's the match: ", len(good_points) / number_keypoints * 100)
+
+    return len(good_points) / number_keypoints * 100
 
 """
         countWhile = 0
@@ -218,6 +252,4 @@ def bestMatch(image):
     return maxIdx
 """
 
-frames = getFrames("../TrainingSet/Categorie III/Video61_2.avi")
-
-
+frames = getFrames("../TrainingSet/Categorie II/Video225.avi")
