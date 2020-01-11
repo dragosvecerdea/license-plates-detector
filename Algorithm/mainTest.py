@@ -143,7 +143,8 @@ def getChars(input):
         cv2.waitKey()
         for char in chars:
             print(bestMatch(char))
-            char = cv2.medianBlur(char, 7)
+            char = cv2.bilateralFilter(char, -1, 20, 20)
+            #char = cv2.medianBlur(char, 9)
             cv2.imshow("char", char)
             cv2.waitKey()
     return chars
@@ -188,9 +189,8 @@ def bestMatch(image):
         image = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         letterRoi = cv2.cvtColor(letterRoi, cv2.COLOR_BGR2GRAY)
         # letterRoi = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-
-
         rows, cols = letterRoi.shape
+
         # --- take the absolute difference of the images ---
         #res = cv2.absdiff(image, letterRoi)
         # --- convert the result to integer type ---
@@ -203,8 +203,27 @@ def bestMatch(image):
     result = np.argmax(diff)
     return result
 
+    """
+        countWhile = 0
+        countOk = 0
+        for i in range(rows):
+            for j in range(cols):
+                if letterRoi[i, j] == image[i, j]:
+                    countOk += 1
+        (_, ctrs1, hierarchy) = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        (_, ctrs2, hierarchy) = cv2.findContours(letterRoi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        matching = cv2.matchShapes(image, letterRoi, cv2.CONTOURS_MATCH_I1, 0)
+        if matching < max:
+            max = matching
+            maxIdx = idx
+    return maxIdx
+    """
+
 
 def matchChecker(character, template):
+
+    #stolen from the internet and modified to fit the project, still a work in progress
+
     original = character
     image_to_compare = template
 
@@ -229,27 +248,8 @@ def matchChecker(character, template):
     else:
         number_keypoints = len(kp_2)
 
-    #print("Keypoints 1ST Image: " + str(len(kp_1)))
-    #print("Keypoints 2ND Image: " + str(len(kp_2)))
-    #print("GOOD Matches:", len(good_points))
-    #print("How good it's the match: ", len(good_points) / number_keypoints * 100)
-
     return len(good_points) / number_keypoints * 100
 
-"""
-        countWhile = 0
-        countOk = 0
-        for i in range(rows):
-            for j in range(cols):
-                if letterRoi[i,j] == image[i,j]:
-                    countOk+=1
-        (_, ctrs1, hierarchy) = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        (_, ctrs2, hierarchy) = cv2.findContours(letterRoi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        matching = cv2.matchShapes(image, letterRoi, cv2.CONTOURS_MATCH_I1, 0)
-        if matching < max:
-            max = matching
-            maxIdx = idx
-    return maxIdx
-"""
+
 
 frames = getFrames("../TrainingSet/Categorie II/Video225.avi")
