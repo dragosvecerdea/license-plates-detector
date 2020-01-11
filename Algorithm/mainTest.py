@@ -3,6 +3,9 @@ import cv2
 from sklearn.cluster import MiniBatchKMeans
 
 
+charPlate = ['B', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T', 'V', 'X', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+
+
 def filterColor(input):
     # load the image
     image = input
@@ -103,7 +106,7 @@ def getPlates(input, colorFiltered):
             cv2.rectangle(originalImage, (x, y), (x + w, y + h), (255), 2)
             roi = originalImage[y:y + h, x:x + w]
             roi = roi / 255.0
-            im_power_law_transformation = cv2.pow(roi, 1.5)
+            im_power_law_transformation = cv2.pow(roi, 1.8)
             rois.append(im_power_law_transformation)
     return rois
 
@@ -119,7 +122,7 @@ def getChars(input):
     img = (255 * img).astype(np.uint8)
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    thresh_inv = cv2.threshold(gray, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    thresh_inv = cv2.threshold(gray, 255, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     edges = auto_canny(thresh_inv, 0.95)
     kernel = np.ones((3, 3), np.uint8)
     # edges = cv2.erode(edges, kernel, iterations=2)
@@ -181,10 +184,10 @@ def crop_img(img, scaleX=1.0, scaleY=1.0):
 
 def bestMatch(image):
     diff = []
+    image = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     for idx in range(1, 18, 1):
         letterRoi = cv2.imread("../SameSizeLetters/" + str(idx) + ".jpg")
         letterRoi = cv2.resize(letterRoi, (image.shape[1], image.shape[0]))
-        image = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         letterRoi = cv2.cvtColor(letterRoi, cv2.COLOR_BGR2GRAY)
         letterRoi = cv2.threshold(letterRoi, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         rows, cols = letterRoi.shape
@@ -192,8 +195,23 @@ def bestMatch(image):
         percentage = matchCheckerDiff(image, letterRoi)
         diff.append(percentage)
 
-    result = np.argmax(diff)+1
-    return result
+    for idx in range(0,10,1):
+        numberRoi = cv2.imread("../SameSizeNumbers/" + str(idx) + ".jpg")
+        numberRoi = cv2.resize(numberRoi, (image.shape[1], image.shape[0]))
+
+        numberRoi = cv2.cvtColor(numberRoi, cv2.COLOR_BGR2GRAY)
+        numberRoi = cv2.threshold(numberRoi, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        rows, cols = numberRoi.shape
+
+        percentage = matchCheckerDiff(image, numberRoi)
+        diff.append(percentage)
+
+
+    result = np.argmax(diff)
+    maxx = np.max(diff)
+    if maxx > 0.75:
+        return charPlate[result]
+    return charPlate[0]
 
     """
         countWhile = 0
@@ -256,5 +274,4 @@ def matchCheckerDiff(character, template):
 
 
 
-
-frames = getFrames("../TrainingSet/Categorie II/Video225.avi")
+frames = getFrames("../TrainingSet/Categorie III/Video100_2.avi")
