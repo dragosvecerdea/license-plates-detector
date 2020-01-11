@@ -142,11 +142,11 @@ def getChars(input):
         cv2.imshow("edge", img)
         cv2.waitKey()
         for char in chars:
-            print(bestMatch(char))
             char = cv2.bilateralFilter(char, -1, 20, 20)
             #char = cv2.medianBlur(char, 9)
             cv2.imshow("char", char)
             cv2.waitKey()
+            print(bestMatch(char))
     return chars
 
 
@@ -186,7 +186,7 @@ def bestMatch(image):
     for idx in range(1, 18, 1):
         letterRoi = cv2.imread("../SameSizeLetters/" + str(idx) + ".jpg")
         letterRoi = cv2.resize(letterRoi, (image.shape[1], image.shape[0]))
-        image = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        #image = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         letterRoi = cv2.cvtColor(letterRoi, cv2.COLOR_BGR2GRAY)
         # letterRoi = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         rows, cols = letterRoi.shape
@@ -197,7 +197,7 @@ def bestMatch(image):
         #res = res.astype(np.uint8)
         # --- find percentage difference based on number of pixels that are not zero ---
         #percentage = (np.count_nonzero(res) * 100) / res.size
-        percentage = matchChecker(image, letterRoi)
+        percentage = matchCheckerDiff(image, letterRoi)
         diff.append(percentage)
 
     result = np.argmax(diff)
@@ -220,7 +220,7 @@ def bestMatch(image):
     """
 
 
-def matchChecker(character, template):
+def matchCheckerKnn(character, template):
 
     #stolen from the internet and modified to fit the project, still a work in progress
 
@@ -249,6 +249,19 @@ def matchChecker(character, template):
         number_keypoints = len(kp_2)
 
     return len(good_points) / number_keypoints * 100
+
+def matchCheckerDiff(character, template):
+
+    (rows, cols) = template.shape
+    countOk = 0
+
+    for i in range(rows):
+        for j in range(cols):
+            if character[i, j] == template[i, j]:
+                countOk += 1
+
+    return countOk/(rows*cols)
+
 
 
 
