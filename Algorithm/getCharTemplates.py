@@ -17,10 +17,11 @@ def auto_canny(image, sigma=0.33):
 
 for idx in range(1,18,1):
     img = cv2.imread("../SameSizeLetters/" + str(idx) + ".bmp")
+    img = cv2.copyMakeBorder(img, 10,10,10,10, cv2.BORDER_CONSTANT)
     letterImg = auto_canny(img)
     #letterImg = cv2.cvtColor(letterImg, cv2.COLOR_BGR2GRAY)
 
-    cv2.imshow("img", letterImg)
+    cv2.imshow("img", img)
     cv2.waitKey()
     (_, ctrs , hierarchy) = cv2.findContours(letterImg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     x, y, w, h = cv2.boundingRect(ctrs[0])
