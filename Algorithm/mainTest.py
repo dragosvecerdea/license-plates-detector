@@ -186,9 +186,9 @@ def bestMatch(image):
     for idx in range(1, 18, 1):
         letterRoi = cv2.imread("../SameSizeLetters/" + str(idx) + ".jpg")
         letterRoi = cv2.resize(letterRoi, (image.shape[1], image.shape[0]))
-        #image = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        image = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         letterRoi = cv2.cvtColor(letterRoi, cv2.COLOR_BGR2GRAY)
-        # letterRoi = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        letterRoi = cv2.threshold(letterRoi, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         rows, cols = letterRoi.shape
 
         # --- take the absolute difference of the images ---
@@ -198,9 +198,12 @@ def bestMatch(image):
         # --- find percentage difference based on number of pixels that are not zero ---
         #percentage = (np.count_nonzero(res) * 100) / res.size
         percentage = matchCheckerDiff(image, letterRoi)
+        cv2.imshow("letter", letterRoi)
+        cv2.waitKey()
+        print(percentage)
         diff.append(percentage)
 
-    result = np.argmax(diff)
+    result = np.argmax(diff)+1
     return result
 
     """
