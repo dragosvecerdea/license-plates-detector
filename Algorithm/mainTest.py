@@ -180,8 +180,6 @@ def crop_img(img, scaleX=1.0, scaleY=1.0):
 
 
 def bestMatch(image):
-    max = 9999999999
-    maxIdx = 1
     diff = []
     for idx in range(1, 18, 1):
         letterRoi = cv2.imread("../SameSizeLetters/" + str(idx) + ".jpg")
@@ -191,16 +189,7 @@ def bestMatch(image):
         letterRoi = cv2.threshold(letterRoi, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         rows, cols = letterRoi.shape
 
-        # --- take the absolute difference of the images ---
-        #res = cv2.absdiff(image, letterRoi)
-        # --- convert the result to integer type ---
-        #res = res.astype(np.uint8)
-        # --- find percentage difference based on number of pixels that are not zero ---
-        #percentage = (np.count_nonzero(res) * 100) / res.size
         percentage = matchCheckerDiff(image, letterRoi)
-        cv2.imshow("letter", letterRoi)
-        cv2.waitKey()
-        print(percentage)
         diff.append(percentage)
 
     result = np.argmax(diff)+1
