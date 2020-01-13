@@ -1,10 +1,11 @@
 import numpy as np
 import cv2
 from sklearn.cluster import MiniBatchKMeans
+import csv
+import time
 
 
 charPlate = ['B', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T', 'V', 'X', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-
 
 def filterColor(input):
     # load the image
@@ -157,6 +158,7 @@ def getChars(input):
 
 def getPlate(plate):
     PLATE = []
+    global count
     counter = 0
     print(plate)
     PLATE.append(plate[0][0])
@@ -172,6 +174,18 @@ def getPlate(plate):
         else:
             PLATE.insert(2,'-')
     print(PLATE)
+
+    licensePlate = ""
+    # traverse in the string
+    for ele in PLATE:
+        licensePlate += ele
+
+    csvRow = [licensePlate, count, fps*count]
+    csvfile = "../results.csv"
+    with open(csvfile, "a", newline='') as fp:
+        wr = csv.writer(fp, dialect='excel')
+        wr.writerow(csvRow)
+
     return PLATE
 
 def isLetter(plateN):
@@ -181,9 +195,10 @@ def isLetter(plateN):
 
 def getFrames(inputVid):
     # Path to video file
+    global count
+    global fps
     video = cv2.VideoCapture(inputVid)
     success, image = video.read()
-    count = 0
     plateIdx = 0
     while success:
         # save frame as JPEG file    
@@ -196,6 +211,8 @@ def getFrames(inputVid):
         print('Read a new frame: ', success)
         count += 1
         success, image = video.read()
+
+    fps = video.get(cv2.cv.CV_CAP_PROP_FPS)
     return count
 
 
@@ -239,52 +256,6 @@ def bestMatch(image):
         return (charPlate[result], result)
     return (charPlate[0], result)
 
-    """
-        countWhile = 0
-        countOk = 0
-        for i in range(rows):
-            for j in range(cols):
-                if letterRoi[i, j] == image[i, j]:
-                    countOk += 1
-        (_, ctrs1, hierarchy) = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        (_, ctrs2, hierarchy) = cv2.findContours(letterRoi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        matching = cv2.matchShapes(image, letterRoi, cv2.CONTOURS_MATCH_I1, 0)
-        if matching < max:
-            max = matching
-            maxIdx = idx
-    return maxIdx
-    """
-
-
-def matchCheckerKnn(character, template):
-
-    #stolen from the internet and modified to fit the project, still a work in progress
-
-    original = character
-    image_to_compare = template
-
-    sift = cv2.xfeatures2d.SIFT_create()
-    kp_1, desc_1 = sift.detectAndCompute(original, None)
-    kp_2, desc_2 = sift.detectAndCompute(image_to_compare, None)
-
-    index_params = dict(algorithm=0, trees=5)
-    search_params = dict()
-    flann = cv2.FlannBasedMatcher(index_params, search_params)
-    matches = flann.knnMatch(desc_1, desc_2, k=2)
-
-    good_points = []
-    for m, n in matches:
-        if m.distance < 0.6 * n.distance:
-            good_points.append(m)
-
-    # Define how similar they are
-    number_keypoints = 0
-    if len(kp_1) <= len(kp_2):
-        number_keypoints = len(kp_1)
-    else:
-        number_keypoints = len(kp_2)
-
-    return len(good_points) / number_keypoints * 100
 
 def matchCheckerDiff(character, template):
 
@@ -298,6 +269,6 @@ def matchCheckerDiff(character, template):
 
     return countOk/(rows*cols)
 
-
-
+count = 0
+fps = 0
 frames = getFrames("../TrainingSet/Categorie I/ZVideo48.mp4")
