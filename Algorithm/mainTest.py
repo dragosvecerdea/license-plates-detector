@@ -71,7 +71,7 @@ def applyCanny(input):
     image = input.copy()
     ## DILATE IMAGE
     kernel = np.ones((3, 3), np.uint8)
-    image = cv2.dilate(image, kernel, iterations=5)
+    image = cv2.dilate(image, kernel, iterations=4)
     canny = auto_canny(image, 0.95)
     return canny
 
@@ -141,6 +141,7 @@ def getChars(input):
                 char = cv2.cvtColor(img[y:y + h, x:x + w], cv2.COLOR_BGR2GRAY)
                 char = cv2.threshold(char, 250, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
                 chars.append(char)
+    PLATE = []
     if len(chars) == 6:
         cv2.imshow("edge", img)
         cv2.waitKey()
@@ -149,9 +150,34 @@ def getChars(input):
             #char = cv2.medianBlur(char, 9)
             cv2.imshow("char", char)
             cv2.waitKey()
-            print(bestMatch(char))
-    return chars
+            PLATE.append(bestMatch(char))
+        return getPlate(PLATE)
+    return 0
 
+
+def getPlate(plate):
+    PLATE = []
+    counter = 0
+    print(plate)
+    PLATE.append(plate[0][0])
+    for idx in range(1,6,1):
+        if (isLetter(plate[idx]) and not isLetter(plate[idx-1])) or (not isLetter(plate[idx]) and isLetter(plate[idx-1])):
+            PLATE.append('-')
+            counter += 1
+        PLATE.append(plate[idx][0])
+
+    if counter == 1:
+        if PLATE[2] == '-':
+            PLATE.insert(5,'-')
+        else:
+            PLATE.insert(2,'-')
+    print(PLATE)
+    return PLATE
+
+def isLetter(plateN):
+    if plateN[1] < 17:
+        return True
+    return False
 
 def getFrames(inputVid):
     # Path to video file
@@ -209,9 +235,9 @@ def bestMatch(image):
 
     result = np.argmax(diff)
     maxx = np.max(diff)
-    if maxx > 0.75:
-        return charPlate[result]
-    return charPlate[0]
+    if maxx > 0.70:
+        return (charPlate[result], result)
+    return (charPlate[0], result)
 
     """
         countWhile = 0
@@ -274,4 +300,4 @@ def matchCheckerDiff(character, template):
 
 
 
-frames = getFrames("../TrainingSet/Categorie III/Video100_2.avi")
+frames = getFrames("../TrainingSet/Categorie I/ZVideo48.mp4")
