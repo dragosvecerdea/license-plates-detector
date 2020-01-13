@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import cv2
 from sklearn.cluster import MiniBatchKMeans
@@ -182,6 +184,7 @@ def getPlate(plate):
 
     csvRow = [licensePlate, count, fps*count]
     csvfile = "../results.csv"
+
     with open(csvfile, "a", newline='') as fp:
         wr = csv.writer(fp, dialect='excel')
         wr.writerow(csvRow)
@@ -200,6 +203,14 @@ def getFrames(inputVid):
     video = cv2.VideoCapture(inputVid)
     success, image = video.read()
     plateIdx = 0
+
+    headers = ['License plate', 'Frame no.', 'Timestamp (seconds)']
+
+    f = open("../results.csv", "w")
+    writer = csv.DictWriter(f, fieldnames=['License plate', 'Frame no.', 'Timestamp (seconds)'])
+    writer.writeheader()
+    f.close()
+
     while success:
         # save frame as JPEG file    
         cv2.imwrite("../TestSet/frame%d.jpg" % count, image)
@@ -271,4 +282,6 @@ def matchCheckerDiff(character, template):
 
 count = 0
 fps = 0
-frames = getFrames("../TrainingSet/Categorie I/ZVideo48.mp4")
+frames = getFrames("../TrainingSet/Categorie II/Video225.avi")
+
+
