@@ -271,10 +271,9 @@ def getFrames(inputVid):
                     getChars(plate)
                     plateIdx += 1
         count += 1
-        if count == 1731:
-            sys.exit()
+        #if count == 1731:
         success, image = video.read()
-
+    sys.exit()
     return count
 
 
