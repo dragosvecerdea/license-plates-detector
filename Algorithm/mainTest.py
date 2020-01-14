@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 from sklearn.cluster import MiniBatchKMeans
 import csv
-import time
+import sys
 
 
 charPlate = ['B', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T', 'V', 'X', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
@@ -56,6 +56,8 @@ def filterColor(input):
         # the mask
         mask = cv2.inRange(img, lower, upper)
         output = cv2.bitwise_and(img, img, mask=mask)
+
+
         return output
 
 
@@ -79,6 +81,7 @@ def applyCanny(input):
     kernel = np.ones((3, 3), np.uint8)
     image = cv2.dilate(image, kernel, iterations=4)
     canny = auto_canny(image, 0.95)
+
     return canny
 
 
@@ -113,6 +116,7 @@ def getPlates(input, colorFiltered):
             roi = originalImage[y:y + h, x:x + w]
             roi = roi / 255.0
             im_power_law_transformation = cv2.pow(roi, 1.8)
+            #im_power_law_transformation =  cv2.normalize(roi, None, alpha=0, beta=2, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
             rois.append(im_power_law_transformation)
     return rois
 
@@ -128,9 +132,12 @@ def getChars(input):
     img = (255 * img).astype(np.uint8)
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    thresh_inv = cv2.threshold(gray, 255, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    edges = auto_canny(thresh_inv, 0.95)
+    #thresh_inv = cv2.threshold(gray, 255, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    thresh_inv = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 199, 5)
 
+    edges = auto_canny(thresh_inv, 0.95)
+    #cv2.imshow("edges", thresh_inv)
+    #cv2.waitKey(0)
     kernel = np.ones((3, 3), np.uint8)
     # edges = cv2.erode(edges, kernel, iterations=2)
     # edges = cv2.dilate(edges, kernel, iterations=2)
@@ -143,18 +150,20 @@ def getChars(input):
         x, y, w, h = cv2.boundingRect(ctr)
         roi_area = w * h
         roi_ratio = roi_area / img_area
+        cv2.rectangle(img, (x, y), (x + w, y + h), (90, 0, 255), 2)
         if ((roi_ratio >= 0.02) and (roi_ratio < 0.2)):
             if ((h > 1.2 * w) and (4 * w >= h)):
-                cv2.rectangle(img, (x, y), (x + w, y + h), (90, 0, 255), 2)
                 char = cv2.cvtColor(img[y:y + h, x:x + w], cv2.COLOR_BGR2GRAY)
                 char = cv2.threshold(char, 250, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
                 chars.append(char)
-
+    #.imshow("cha4", img)
+    #cv2.waitKey(0)
     PLATE = []
     confident = True
     if len(chars) == 6:
         for char in chars:
             char = cv2.bilateralFilter(char, -1, 20, 20)
+            #char = cv2.erode(char, (3, 3), iterations=2)
             curr_confidence = bestMatch(char)
             if curr_confidence[2] < 0.8:
                 confident = False
@@ -163,7 +172,7 @@ def getChars(input):
             postPlate(PLATE)
         else:
             potentialPlates.append(getPlate(PLATE))
-            if potentialPlates.count(getPlate(PLATE)) == 5:
+            if potentialPlates.count(getPlate(PLATE)) == 2:
                 postPlate(PLATE)
 
 
@@ -218,10 +227,10 @@ def getFrames(inputVid):
     success, image = video.read()
     plateIdx = 0
 
-    headers = ['License plate', 'Frame no.', 'Timestamp (seconds)']
+    headers = ['License plate', 'Frame no.', 'Timestamp(seconds)']
 
     f = open("../results.csv", "w")
-    writer = csv.DictWriter(f, fieldnames=['License plate', 'Frame no.', 'Timestamp (seconds)'])
+    writer = csv.DictWriter(f, fieldnames=['License plate', 'Frame no.', 'Timestamp(seconds)'])
     writer.writeheader()
     f.close()
 
@@ -231,13 +240,16 @@ def getFrames(inputVid):
     while success:
         # save frame as JPEG file    
         cv2.imwrite("../TestSet/frame%d.jpg" % count, image)
-        plates = getPlates(image, filterColor(image))
-
-        for idx, plate in enumerate(plates):
-            getChars(plate)
-            plateIdx += 1
-        print('Read a new frame: ', success)
+        if count % 5 == 0:
+            #if count == 380:
+            plates = getPlates(image, filterColor(image))
+            for idx, plate in enumerate(plates):
+                getChars(plate)
+                plateIdx += 1
+            print('Read a new frame: ', success)
         count += 1
+        if count == 1731:
+            sys.exit()
         success, image = video.read()
 
     return count
@@ -297,6 +309,6 @@ def matchCheckerDiff(character, template):
     return countOk/(rows*cols)
 
 count = 0
-frames = getFrames("../TrainingSet/Categorie II/Video225.avi")
+frames = getFrames("../trainingsvideo.avi")
 
 
