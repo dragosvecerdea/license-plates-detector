@@ -22,7 +22,7 @@ for idx in range(1,18,1):
     #letterImg = cv2.cvtColor(letterImg, cv2.COLOR_BGR2GRAY)
 
     kernel = np.ones((3, 3), np.uint8)
-    img = cv2.dilate(img, kernel, iterations=2)
+    img = cv2.dilate(img, kernel, iterations=0)
     cv2.imshow("img", img)
     cv2.waitKey()
     (_, ctrs , hierarchy) = cv2.findContours(letterImg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)

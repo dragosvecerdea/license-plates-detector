@@ -8,6 +8,9 @@ import time
 
 
 charPlate = ['B', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T', 'V', 'X', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+fps = 0
+potentialPlates = []
+posted = []
 
 def filterColor(input):
     # load the image
@@ -127,9 +130,11 @@ def getChars(input):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     thresh_inv = cv2.threshold(gray, 255, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     edges = auto_canny(thresh_inv, 0.95)
+
     kernel = np.ones((3, 3), np.uint8)
     # edges = cv2.erode(edges, kernel, iterations=2)
     # edges = cv2.dilate(edges, kernel, iterations=2)
+
     (_, ctrs, hierarchy) = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     sorted_ctrs = sorted(ctrs, key=lambda ctr: cv2.boundingRect(ctr)[0])
     img_area = img.shape[0] * img.shape[1]
@@ -144,18 +149,22 @@ def getChars(input):
                 char = cv2.cvtColor(img[y:y + h, x:x + w], cv2.COLOR_BGR2GRAY)
                 char = cv2.threshold(char, 250, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
                 chars.append(char)
+
     PLATE = []
+    confident = True
     if len(chars) == 6:
-        cv2.imshow("edge", img)
-        cv2.waitKey()
         for char in chars:
             char = cv2.bilateralFilter(char, -1, 20, 20)
-            #char = cv2.medianBlur(char, 9)
-            cv2.imshow("char", char)
-            cv2.waitKey()
+            curr_confidence = bestMatch(char)
+            if curr_confidence[2] < 0.8:
+                confident = False
             PLATE.append(bestMatch(char))
-        return getPlate(PLATE)
-    return 0
+        if confident:
+            postPlate(PLATE)
+        else:
+            potentialPlates.append(getPlate(PLATE))
+            if potentialPlates.count(getPlate(PLATE)) == 5:
+                postPlate(PLATE)
 
 
 def getPlate(plate):
@@ -175,21 +184,26 @@ def getPlate(plate):
             PLATE.insert(5,'-')
         else:
             PLATE.insert(2,'-')
-    print(PLATE)
 
     licensePlate = ""
     # traverse in the string
     for ele in PLATE:
         licensePlate += ele
 
-    csvRow = [licensePlate, count, fps*count]
+    return licensePlate
+
+def postPlate(plate):
+    licensePlate = getPlate(plate)
+    posted.append(licensePlate)
+    if posted.count(licensePlate) > 1:
+        return
+
+    csvRow = [licensePlate, count, (1/fps)*count]
     csvfile = "../results.csv"
 
     with open(csvfile, "a", newline='') as fp:
         wr = csv.writer(fp, dialect='excel')
         wr.writerow(csvRow)
-
-    return PLATE
 
 def isLetter(plateN):
     if plateN[1] < 17:
@@ -211,6 +225,9 @@ def getFrames(inputVid):
     writer.writeheader()
     f.close()
 
+    fps = video.get(cv2.CAP_PROP_FPS)
+    print(fps)
+
     while success:
         # save frame as JPEG file    
         cv2.imwrite("../TestSet/frame%d.jpg" % count, image)
@@ -223,7 +240,6 @@ def getFrames(inputVid):
         count += 1
         success, image = video.read()
 
-    fps = video.get(cv2.cv.CV_CAP_PROP_FPS)
     return count
 
 
@@ -264,8 +280,8 @@ def bestMatch(image):
     result = np.argmax(diff)
     maxx = np.max(diff)
     if maxx > 0.70:
-        return (charPlate[result], result)
-    return (charPlate[0], result)
+        return (charPlate[result], result, maxx)
+    return (charPlate[0], result, maxx)
 
 
 def matchCheckerDiff(character, template):
@@ -281,7 +297,6 @@ def matchCheckerDiff(character, template):
     return countOk/(rows*cols)
 
 count = 0
-fps = 0
 frames = getFrames("../TrainingSet/Categorie II/Video225.avi")
 
 
