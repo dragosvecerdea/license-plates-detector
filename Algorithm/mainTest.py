@@ -196,7 +196,7 @@ def getChars(input):
             postPlate(PLATE)
         else:
             potentialPlates.append(getPlate(PLATE))
-            if potentialPlates.count(getPlate(PLATE)) == 3:
+            if potentialPlates.count(getPlate(PLATE)) >= 3:
                 print(getPlate(PLATE))
                 postPlate(PLATE)
 
