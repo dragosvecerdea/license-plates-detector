@@ -13,52 +13,26 @@ potentialPlates = []
 posted = []
 
 def filterColor(input):
+
+
     # load the image
     image = input
-    # normalize float versions
-    norm_img2 = cv2.normalize(image, None, alpha=0, beta=2, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    norm_img2 = np.clip(norm_img2, 0, 1)
-    norm_img2 = (255 * norm_img2).astype(np.uint8)
 
-    (h, w) = norm_img2.shape[:2]
-    im = cv2.cvtColor(norm_img2, cv2.COLOR_BGR2LAB)
-    im = im.reshape((im.shape[0] * im.shape[1], 3))
-    clt = MiniBatchKMeans(n_clusters=12)
-    labels = clt.fit_predict(im)
-    quant = clt.cluster_centers_.astype("uint8")[labels]
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    # HSV values to define a colour range.
+    colorLow = np.array([0, 90, 90])
+    colorHigh = np.array([50, 255, 255])
+    mask = cv2.inRange(hsv, colorLow, colorHigh)
+    # Show the first mask
+    kernal = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10, 10))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernal)
+    image = cv2.bitwise_and(image, image, mask=mask)
 
-    # reshape the feature vectors to images
-    quant = quant.reshape((h, w, 3))
-    im = im.reshape((h, w, 3))
-
-    # convert from L*a*b* to RGB
-    quant = cv2.cvtColor(quant, cv2.COLOR_LAB2BGR)
-    im = cv2.cvtColor(im, cv2.COLOR_LAB2BGR)
-
-    xp = [0, 64, 128, 192, 255]
-    fp = [0, 16, 128, 240, 255]
-    x = np.arange(256)
-    table = np.interp(x, xp, fp).astype('uint8')
-    img = cv2.LUT(quant, table)
-
-    # define the list of boundaries
-    boundaries = [
-        ([0, 100, 150], [100, 255, 255]),
-        # ([0, 0, 0], [50, 50, 50])
-    ]
-
-    for (lower, upper) in boundaries:
-        # create NumPy arrays from the boundaries
-        lower = np.array(lower, dtype="uint8")
-        upper = np.array(upper, dtype="uint8")
-
-        # find the colors within the specified boundaries and apply
-        # the mask
-        mask = cv2.inRange(img, lower, upper)
-        output = cv2.bitwise_and(img, img, mask=mask)
+    #cv2.imshow("color", image)
+    #cv2.waitKey()
+    return image
 
 
-        return output
 
 
 def auto_canny(image, sigma):
@@ -85,62 +59,108 @@ def applyCanny(input):
     return canny
 
 
+def rotate(angle, image):
+    if angle < -45:
+        angle = -(90 + angle)
+    else:
+        angle = -angle
+    # rotate the image to deskew it
+    (h, w) = image.shape[:2]
+    center = (w // 2, h // 2)
+    M = cv2.getRotationMatrix2D(center, -angle, 1.0)
+    rotated = cv2.warpAffine(image, M, (w, h),
+                             flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    return rotated
+
+
 def getPlates(input, colorFiltered):
-    morph_size = (3, 3)
+
     # load the image
     originalImage = input.copy()
     image = applyCanny(colorFiltered)
 
-    image = image.astype('uint8')
-    # imgGray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    imgGray = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    erosion = cv2.erode(image, (3, 3), iterations=2)
-
     ## DILATE IMAGE
     kernel = np.ones((3, 3), np.uint8)
-    dialate = cv2.dilate(erosion, kernel, iterations=5)
 
-    imThreshold = cv2.threshold(dialate, 250, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    image = image.astype('uint8')
+    image = cv2.dilate(image, kernel, iterations=3)
+
+    #cv2.imshow("img", image)
+    #cv2.waitKey()
 
     # Find bounding boxed
     (_, contours, hierarchy) = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    boxes = []
 
+    rois = []
+    for contour in contours:
+        (x, y, w, h) = cv2.boundingRect(contour)
+        if (1 <= (float(w) / float(h)) < 5):
+            angle = cv2.minAreaRect(contour)[-1]
+            rotated = rotate(angle,originalImage)
+            roisRotated = getPlatesOnRotated(rotated)
+            for roii in roisRotated:
+                rois.append(roii)
+    return rois
+
+
+def getPlatesOnRotated(input):
+
+
+    #cv2.imshow("rot", input)
+    #cv2.waitKey()
+    colorFiltered = filterColor(input)
+    # load the image
+    originalImage = input.copy()
+    image = applyCanny(colorFiltered)
+
+    ## DILATE IMAGE
+    kernel = np.ones((3, 3), np.uint8)
+
+    image = image.astype('uint8')
+    image = cv2.dilate(image, kernel, iterations=3)
+
+    # Find bounding boxed
+    (_, contours, hierarchy) = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     idx = 0
     rois = []
     for contour in contours:
         idx += 1
         (x, y, w, h) = cv2.boundingRect(contour)
-        if (2 <= (float(w) / float(h)) < 4):
-            cv2.rectangle(originalImage, (x, y), (x + w, y + h), (255), 2)
+        if (1 <= (float(w) / float(h)) < 5):
             roi = originalImage[y:y + h, x:x + w]
             roi = roi / 255.0
-            im_power_law_transformation = cv2.pow(roi, 1.8)
-            #im_power_law_transformation =  cv2.normalize(roi, None, alpha=0, beta=2, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+            roi = cv2.pow(roi, 1.8)
+            im_power_law_transformation = cv2.normalize(roi, None, alpha=0, beta=1.9, norm_type=cv2.NORM_MINMAX,
+                                                        dtype=cv2.CV_32F)
             rois.append(im_power_law_transformation)
     return rois
 
 
 def getChars(input):
     img = input
-    img = cv2.resize(img, (img.shape[1] * 5, img.shape[0] * 5), interpolation=cv2.INTER_CUBIC)
-    img = crop_img(img, 0.9, 0.7)
+    img = cv2.resize(img, (img.shape[1] * 4, img.shape[0] * 4), interpolation=cv2.INTER_CUBIC)
+    img = crop_img(img, 0.9, 0.9)
 
-    img = cv2.normalize(img, None, alpha=0, beta=1.5, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    #img = cv2.normalize(img, None, alpha=0, beta=1.5, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
 
     img = np.clip(img, 0, 1)
     img = (255 * img).astype(np.uint8)
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     #thresh_inv = cv2.threshold(gray, 255, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    thresh_inv = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 199, 5)
+    thresh_inv = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 199, 25)
+    kernel = np.ones((3,3), np.uint8)
+    #cv2.imshow("debug", thresh_inv)
+    #cv2.waitKey()
+
 
     edges = auto_canny(thresh_inv, 0.95)
-    #cv2.imshow("edges", thresh_inv)
+
+    edges = cv2.dilate(edges, kernel, iterations=1)
+
+    #cv2.imshow("edges", edges)
     #cv2.waitKey(0)
-    kernel = np.ones((3, 3), np.uint8)
-    # edges = cv2.erode(edges, kernel, iterations=2)
-    # edges = cv2.dilate(edges, kernel, iterations=2)
+
 
     (_, ctrs, hierarchy) = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     sorted_ctrs = sorted(ctrs, key=lambda ctr: cv2.boundingRect(ctr)[0])
@@ -150,11 +170,13 @@ def getChars(input):
         x, y, w, h = cv2.boundingRect(ctr)
         roi_area = w * h
         roi_ratio = roi_area / img_area
-        cv2.rectangle(img, (x, y), (x + w, y + h), (90, 0, 255), 2)
         if ((roi_ratio >= 0.02) and (roi_ratio < 0.2)):
-            if ((h > 1.2 * w) and (4 * w >= h)):
+            if ((h > 1 * w) and (5 * w >= h)):
                 char = cv2.cvtColor(img[y:y + h, x:x + w], cv2.COLOR_BGR2GRAY)
-                char = cv2.threshold(char, 250, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+                char = cv2.threshold(char, 150, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+                char = cv2.dilate(char, kernel, iterations=1)
+                #cv2.imshow("char", char)
+                #cv2.waitKey()
                 chars.append(char)
     #.imshow("cha4", img)
     #cv2.waitKey(0)
@@ -165,6 +187,8 @@ def getChars(input):
             char = cv2.bilateralFilter(char, -1, 20, 20)
             #char = cv2.erode(char, (3, 3), iterations=2)
             curr_confidence = bestMatch(char)
+            if curr_confidence == False:
+                return
             if curr_confidence[2] < 0.8:
                 confident = False
             PLATE.append(bestMatch(char))
@@ -172,7 +196,8 @@ def getChars(input):
             postPlate(PLATE)
         else:
             potentialPlates.append(getPlate(PLATE))
-            if potentialPlates.count(getPlate(PLATE)) == 2:
+            if potentialPlates.count(getPlate(PLATE)) == 3:
+                print(getPlate(PLATE))
                 postPlate(PLATE)
 
 
@@ -180,7 +205,6 @@ def getPlate(plate):
     PLATE = []
     global count
     counter = 0
-    print(plate)
     PLATE.append(plate[0][0])
     for idx in range(1,6,1):
         if (isLetter(plate[idx]) and not isLetter(plate[idx-1])) or (not isLetter(plate[idx]) and isLetter(plate[idx-1])):
@@ -193,16 +217,17 @@ def getPlate(plate):
             PLATE.insert(5,'-')
         else:
             PLATE.insert(2,'-')
-
+    if counter > 2:
+        return False
     licensePlate = ""
-    # traverse in the string
     for ele in PLATE:
         licensePlate += ele
-
     return licensePlate
 
 def postPlate(plate):
     licensePlate = getPlate(plate)
+    if licensePlate == False:
+        return
     posted.append(licensePlate)
     if posted.count(licensePlate) > 1:
         return
@@ -239,14 +264,12 @@ def getFrames(inputVid):
 
     while success:
         # save frame as JPEG file    
-        cv2.imwrite("../TestSet/frame%d.jpg" % count, image)
-        if count % 5 == 0:
-            #if count == 380:
-            plates = getPlates(image, filterColor(image))
-            for idx, plate in enumerate(plates):
-                getChars(plate)
-                plateIdx += 1
-            print('Read a new frame: ', success)
+        if count % 7 == 0:
+            #if count == 560:
+                plates = getPlates(image, filterColor(image))
+                for idx, plate in enumerate(plates):
+                    getChars(plate)
+                    plateIdx += 1
         count += 1
         if count == 1731:
             sys.exit()
@@ -293,7 +316,7 @@ def bestMatch(image):
     maxx = np.max(diff)
     if maxx > 0.70:
         return (charPlate[result], result, maxx)
-    return (charPlate[0], result, maxx)
+    return False
 
 
 def matchCheckerDiff(character, template):
